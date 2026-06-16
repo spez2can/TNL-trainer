@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TNL Pitch Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --c-bg: #0F0F13;
+  --c-surface: #17171D;
+  --c-surface2: #1E1E27;
+  --c-border: rgba(255,255,255,0.08);
+  --c-border2: rgba(255,255,255,0.14);
+  --c-text: #E8E8F0;
+  --c-muted: #888899;
+  --c-dim: #555566;
+  --c-accent: #7B6EF6;
+  --c-accent2: #5A4FD4;
+  --c-green: #1DB87A;
+  --c-amber: #F0A030;
+  --c-red: #E04848;
+  --c-left: #4A9EE0;
+  --c-right: #E0874A;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font: 'Inter', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body { background: var(--c-bg); color: var(--c-text); font-family: var(--font); min-height: 100vh; }
+a { color: var(--c-accent); text-decoration: none; }
+
+/* ── LAYOUT ── */
+.app { max-width: 680px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ── HEADER ── */
+.page-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--c-border); }
+.page-header h2 { font-size: 17px; font-weight: 600; color: var(--c-text); flex: 1; }
+.badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; background: rgba(123,110,246,0.18); color: var(--c-accent); }
+
+/* ── CARDS ── */
+.card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 10px; }
+.card-inset { background: var(--c-surface2); border: 1px solid var(--c-border); border-radius: var(--radius-sm); padding: .875rem 1rem; margin-bottom: 8px; }
+
+/* ── BUTTONS ── */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: 1px solid var(--c-border2); border-radius: var(--radius-sm); background: transparent; color: var(--c-text); font-family: var(--font); font-size: 13px; cursor: pointer; transition: background .15s, border-color .15s; }
+.btn:hover { background: var(--c-surface2); border-color: rgba(255,255,255,0.2); }
+.btn:active { transform: scale(.98); }
+.btn-primary { background: var(--c-accent); color: #fff; border-color: var(--c-accent); }
+.btn-primary:hover { background: var(--c-accent2); border-color: var(--c-accent2); }
+.btn-danger { background: var(--c-red); color: #fff; border-color: var(--c-red); }
+.btn-danger:hover { background: #B83838; border-color: #B83838; }
+.btn-green { background: var(--c-green); color: #fff; border-color: var(--c-green); }
+.btn-green:hover { background: #17A06A; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-lg { padding: 11px 24px; font-size: 15px; width: 100%; justify-content: center; }
+.btn-block { width: 100%; justify-content: center; }
+
+/* ── FORMS ── */
+.fg { margin-bottom: 12px; }
+label { display: block; font-size: 12px; color: var(--c-muted); margin-bottom: 5px; }
+input[type=text], input[type=email], input[type=password], select, textarea {
+  width: 100%; padding: 9px 12px; background: var(--c-surface2); border: 1px solid var(--c-border2);
+  border-radius: var(--radius-sm); color: var(--c-text); font-family: var(--font); font-size: 14px;
+}
+input:focus, select:focus { outline: none; border-color: var(--c-accent); }
+select option { background: var(--c-surface2); }
+
+/* ── TABS ── */
+.tabs { display: flex; border-bottom: 1px solid var(--c-border); margin-bottom: 1.25rem; gap: 0; }
+.tab { padding: 8px 16px; font-size: 13px; cursor: pointer; border: none; border-bottom: 2px solid transparent; background: transparent; color: var(--c-muted); font-family: var(--font); margin-bottom: -1px; }
+.tab.active { color: var(--c-accent); border-bottom-color: var(--c-accent); }
+
+/* ── TAGS / PILLS ── */
+.tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--c-surface2); color: var(--c-muted); border: 1px solid var(--c-border); }
+.pill { padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.pill-g { background: rgba(29,184,122,.15); color: var(--c-green); }
+.pill-o { background: rgba(240,160,48,.15); color: var(--c-amber); }
+.pill-r { background: rgba(224,72,72,.15); color: var(--c-red); }
+.ch-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+.ch-L { background: rgba(74,158,224,.15); color: var(--c-left); }
+.ch-R { background: rgba(224,135,74,.15); color: var(--c-right); }
+.ch-S { background: var(--c-surface2); color: var(--c-muted); border: 1px solid var(--c-border); }
+
+/* ── METRICS ── */
+.metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 1rem; }
+.metric { background: var(--c-surface2); border: 1px solid var(--c-border); border-radius: var(--radius-sm); padding: .875rem .5rem; text-align: center; }
+.metric-val { font-size: 22px; font-weight: 600; font-family: var(--mono); }
+.metric-label { font-size: 11px; color: var(--c-muted); margin-top: 2px; }
+
+/* ── CHANNEL SELECTOR ── */
+.ch-row { display: flex; gap: 6px; }
+.ch-btn { flex: 1; padding: 8px; border: 1px solid var(--c-border2); border-radius: var(--radius-sm); background: transparent; color: var(--c-muted); font-family: var(--font); font-size: 12px; cursor: pointer; text-align: center; transition: all .15s; }
+.ch-btn.active { border-color: var(--c-accent); color: var(--c-accent); background: rgba(123,110,246,.1); }
+
+/* ── WAVEFORM ── */
+.wv { width: 100%; height: 72px; background: var(--c-surface2); border-radius: var(--radius-sm); position: relative; overflow: hidden; margin: 6px 0; }
+.wv canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+.wv.interactive { cursor: crosshair; }
+.seg-region { position: absolute; top: 0; height: 100%; background: rgba(123,110,246,.15); border-left: 2px solid var(--c-accent); border-right: 2px solid var(--c-accent); pointer-events: none; }
+.onset-mk { position: absolute; top: 0; width: 2px; height: 100%; background: var(--c-green); pointer-events: none; }
+.onset-mk::after { content: ''; position: absolute; top: 4px; left: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--c-green); }
+.onset-mk.saved { background: var(--c-accent); }
+.onset-mk.saved::after { background: var(--c-accent); }
+
+/* ── NOTE GRID ── */
+.note-grid { display: grid; grid-template-columns: repeat(12,1fr); gap: 3px; margin-top: 8px; }
+.nc { height: 26px; border-radius: 4px; background: var(--c-surface2); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: var(--c-muted); }
+.nc.g { background: rgba(29,184,122,.25); color: var(--c-green); }
+.nc.o { background: rgba(240,160,48,.25); color: var(--c-amber); }
+.nc.r { background: rgba(224,72,72,.25); color: var(--c-red); }
+
+/* ── TIMING BARS ── */
+.tb-wrap { display: flex; align-items: center; gap: 6px; margin: 2px 0; font-size: 11px; }
+.tb-bg { flex: 1; height: 10px; background: var(--c-surface2); border-radius: 5px; position: relative; overflow: hidden; }
+.tb-ctr { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: var(--c-border2); }
+.tb-fill { position: absolute; top: 1px; height: 8px; border-radius: 4px; }
+
+/* ── SPARK ── */
+.spark { display: flex; align-items: flex-end; gap: 2px; height: 36px; }
+.spark-bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 4px; }
+
+/* ── MISC ── */
+.sl { font-size: 11px; color: var(--c-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin: 1rem 0 6px; }
+.row { display: flex; align-items: center; gap: 8px; }
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hidden { display: none !important; }
+.rec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-red); display: inline-block; animation: blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.2} }
+.pitch-big { font-size: 48px; font-weight: 600; font-family: var(--mono); text-align: center; line-height: 1; }
+.cents-sm { font-size: 14px; color: var(--c-muted); text-align: center; margin-top: 4px; }
+.alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 12px; }
+.alert-info { background: rgba(123,110,246,.1); border: 1px solid rgba(123,110,246,.2); color: var(--c-accent); }
+.alert-success { background: rgba(29,184,122,.1); border: 1px solid rgba(29,184,122,.2); color: var(--c-green); }
+.alert-warn { background: rgba(240,160,48,.1); border: 1px solid rgba(240,160,48,.2); color: var(--c-amber); }
+.ex-card { cursor: pointer; transition: border-color .15s, background .15s; }
+.ex-card:hover { border-color: var(--c-accent); background: rgba(123,110,246,.04); }
+.seg-card { cursor: pointer; border-left: 3px solid transparent; transition: border-color .15s; }
+.seg-card:hover { border-left-color: var(--c-accent); }
+.ar { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--c-border); font-size: 12px; }
+.ar:last-child { border: none; }
+.logo-mark { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg,#7B6EF6,#4A9EE0); display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; margin: 0 auto 12px; }
+.divider { border: none; border-top: 1px solid var(--c-border); margin: 14px 0; }
+
+/* ── LOGIN SCREEN ── */
+#sc-login { max-width: 360px; margin: 3rem auto; }
+
+/* ── LOADING ── */
+#loading { position: fixed; inset: 0; background: var(--c-bg); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.spinner { width: 32px; height: 32px; border: 3px solid var(--c-border2); border-top-color: var(--c-accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 480px) {
+  .metrics { grid-template-columns: 1fr 1fr; }
+  .g2 { grid-template-columns: 1fr; }
+  .ch-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div></div>
+
+<div class="app">
+
+<!-- ══ LOGIN ══════════════════════════════════════════════════ -->
+<div id="sc-login" class="screen">
+  <div style="text-align:center;margin-bottom:1.5rem">
+    <div class="logo-mark"><i class="ti ti-music"></i></div>
+    <h1 style="font-size:22px;font-weight:600">TNL Pitch Trainer</h1>
+    <p style="font-size:13px;color:var(--c-muted);margin-top:4px">Toronto Northern Lights</p>
+  </div>
+  <div class="card">
+    <div id="auth-tabs" class="tabs" style="margin-bottom:1rem">
+      <button class="tab active" onclick="showAuthTab('signin')">Sign in</button>
+      <button class="tab" onclick="showAuthTab('signup')">Create account</button>
+    </div>
+    <div id="auth-signin">
+      <div class="fg"><label>Email</label><input type="email" id="si-email" placeholder="your@email.com" /></div>
+      <div class="fg"><label>Password</label><input type="password" id="si-pass" placeholder="Password" /></div>
+      <button class="btn btn-primary btn-block" onclick="doSignIn()"><i class="ti ti-login"></i> Sign in</button>
+      <p id="si-err" style="font-size:12px;color:var(--c-red);margin-top:8px;display:none"></p>
+    </div>
+    <div id="auth-signup" class="hidden">
+      <div class="fg"><label>Your name</label><input type="text" id="su-name" placeholder="e.g. David W." /></div>
+      <div class="fg"><label>Email</label><input type="email" id="su-email" placeholder="your@email.com" /></div>
+      <div class="fg"><label>Password</label><input type="password" id="su-pass" placeholder="Min 6 characters" /></div>
+      <button class="btn btn-primary btn-block" onclick="doSignUp()"><i class="ti ti-user-plus"></i> Create account</button>
+      <p id="su-err" style="font-size:12px;color:var(--c-red);margin-top:8px;display:none"></p>
+      <p id="su-ok" style="font-size:12px;color:var(--c-green);margin-top:8px;display:none"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADMIN ══════════════════════════════════════════════════ -->
+<div id="sc-admin" class="screen">
+  <div class="page-header">
+    <i class="ti ti-settings" style="color:var(--c-muted)"></i>
+    <h2>Director panel</h2>
+    <span class="badge">Admin</span>
+    <button class="btn btn-sm" style="margin-left:auto" onclick="doSignOut()"><i class="ti ti-logout"></i> Sign out</button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="aTab('exercises')">Exercises</button>
+    <button class="tab" onclick="aTab('progress')">Member progress</button>
+  </div>
+
+  <!-- ADD EXERCISE -->
+  <div id="at-exercises">
+    <div class="card" style="margin-bottom:1rem">
+      <p style="font-size:13px;font-weight:600;margin-bottom:12px">Add exercise</p>
+      <div class="g2">
+        <div class="fg"><label>Song / exercise name</label><input type="text" id="en" placeholder="e.g. Lida Rose" /></div>
+        <div class="fg"><label>Voice part</label>
+          <select id="evp">
+            <option value="All">All parts</option>
+            <option value="Tenor">Tenor</option>
+            <option value="Lead">Lead</option>
+            <option value="Bari">Bari</option>
+            <option value="Bass">Bass</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Reference audio file <span style="color:var(--c-dim)">(MP3, WAV, M4A)</span></label>
+        <input type="file" id="rf" accept="audio/*" style="border:1px solid var(--c-border2);border-radius:var(--radius-sm);padding:6px;background:var(--c-surface2);color:var(--c-text);font-size:13px" onchange="onAudioLoad()" />
+      </div>
+
+      <!-- CHANNEL SELECTOR -->
+      <div id="ch-selector" class="hidden fg">
+        <label>Which channel has the part to check?</label>
+        <div class="ch-row" style="margin-top:5px">
+          <button class="ch-btn active" data-ch="mix" onclick="setCh(this)"><i class="ti ti-wave-sine"></i><br>Stereo mix</button>
+          <button class="ch-btn" data-ch="left" onclick="setCh(this)"><i class="ti ti-arrow-bar-left"></i><br>Left only</button>
+          <button class="ch-btn" data-ch="right" onclick="setCh(this)"><i class="ti ti-arrow-bar-right"></i><br>Right only</button>
+        </div>
+        <p id="ch-hint" style="font-size:11px;color:var(--c-muted);margin-top:6px">Stereo mix — both channels averaged. Use Left or Right if the part is panned to one side.</p>
+        <div id="ch-preview" class="hidden g2" style="margin-top:8px;gap:8px">
+          <div><p style="font-size:10px;color:var(--c-dim);margin-bottom:2px">Left channel</p><div class="wv" style="height:36px;margin:0"><canvas id="cv-left"></canvas></div></div>
+          <div><p style="font-size:10px;color:var(--c-dim);margin-bottom:2px">Right channel</p><div class="wv" style="height:36px;margin:0"><canvas id="cv-right"></canvas></div></div>
+        </div>
+      </div>
+
+      <!-- SEGMENT EDITOR -->
+      <div id="seg-editor" class="hidden">
+        <hr class="divider" />
+        <p style="font-size:13px;font-weight:600;margin-bottom:8px">Define segments</p>
+        <audio id="ref-ed" controls style="width:100%;height:36px;margin-bottom:8px"></audio>
+        <div class="wv interactive" id="seg-tl" onmousedown="tmDown(event)" onmousemove="tmMove(event)" onmouseup="tmUp(event)">
+          <canvas id="tc"></canvas>
+          <div id="seg-rgn" class="seg-region hidden"></div>
+          <div id="onset-layer"></div>
+        </div>
+        <div class="row" style="margin:6px 0;flex-wrap:wrap;gap:6px">
+          <span id="seg-time-lbl" style="font-size:12px;color:var(--c-muted)">Drag on the timeline to select a range</span>
+          <div style="flex:1"></div>
+          <button class="btn btn-green btn-sm" id="btn-tap" onclick="tapOnset()" disabled><i class="ti ti-hand-click"></i> Tap onset</button>
+          <button class="btn btn-sm" onclick="undoOnset()">Undo</button>
+          <button class="btn btn-sm" onclick="clearOnsets()">Clear</button>
+          <span id="onset-ct" style="font-size:12px;color:var(--c-muted)">0 onsets</span>
+        </div>
+        <div class="row" style="gap:8px;align-items:flex-end">
+          <div class="fg" style="flex:1;margin:0"><label>Segment name</label><input type="text" id="seg-name" placeholder="e.g. Verse 1, Measures 4–8, Bridge" /></div>
+          <button class="btn btn-primary btn-sm" style="margin-bottom:1px" onclick="saveSeg()"><i class="ti ti-plus"></i> Save</button>
+        </div>
+        <div id="saved-segs-adm"></div>
+      </div>
+
+      <hr class="divider" />
+      <div class="fg"><label>Notes for singer <span style="color:var(--c-dim)">(optional)</span></label><input type="text" id="en-notes" placeholder="e.g. Watch the F# on 'home'" /></div>
+      <button class="btn btn-primary" onclick="addExercise()"><i class="ti ti-plus"></i> Add exercise</button>
+      <p id="ex-msg" style="font-size:12px;margin-top:8px;display:none"></p>
+    </div>
+    <div id="ex-list"></div>
+  </div>
+  <div id="at-progress" class="hidden"><div id="prog-list"></div></div>
+</div>
+
+<!-- ══ SINGER ══════════════════════════════════════════════════ -->
+<div id="sc-singer" class="screen">
+  <div class="page-header">
+    <i class="ti ti-music" style="color:var(--c-muted)"></i>
+    <h2 id="sg-name">Welcome</h2>
+    <button class="btn btn-sm" style="margin-left:auto" onclick="doSignOut()"><i class="ti ti-logout"></i> Sign out</button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="sTab('practice')">Practice</button>
+    <button class="tab" onclick="sTab('history')">My history</button>
+  </div>
+
+  <div id="st-practice">
+    <!-- pick exercise -->
+    <div id="sp-ex">
+      <p style="font-size:13px;color:var(--c-muted);margin-bottom:10px">Choose a song to practice:</p>
+      <div id="s-ex-list"></div>
+    </div>
+    <!-- pick segment -->
+    <div id="sp-seg" class="hidden">
+      <button class="btn btn-sm" style="margin-bottom:10px" onclick="backToEx()"><i class="ti ti-arrow-left"></i> Songs</button>
+      <div class="card">
+        <p style="font-weight:600;font-size:15px" id="s-ex-title"></p>
+        <p style="font-size:12px;color:var(--c-muted);margin-top:3px" id="s-ex-notes"></p>
+        <audio id="s-ref-prev" controls style="width:100%;height:36px;margin:10px 0"></audio>
+        <p style="font-size:12px;font-weight:600;margin-bottom:6px">Choose a segment:</p>
+        <div id="s-seg-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
+    <!-- record -->
+    <div id="sp-rec" class="hidden">
+      <button class="btn btn-sm" style="margin-bottom:10px" onclick="backToSeg()"><i class="ti ti-arrow-left"></i> Segments</button>
+      <div class="card">
+        <div class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:4px">
+          <p style="font-weight:600;font-size:14px" id="r-ex-title"></p>
+          <span id="r-seg-tag" class="tag"></span>
+          <span id="r-ch-badge" class="ch-badge"></span>
+        </div>
+        <p style="font-size:12px;color:var(--c-muted)" id="r-seg-notes"></p>
+
+        <div id="r-prev-wrap" class="hidden card-inset" style="margin-top:8px">
+          <p style="font-size:11px;color:var(--c-muted);margin-bottom:5px"><i class="ti ti-chart-line"></i> Your progress on this segment</p>
+          <div id="r-spark" class="spark"></div>
+          <p style="font-size:11px;color:var(--c-muted);margin-top:3px" id="r-spark-lbl"></p>
+        </div>
+
+        <div class="card-inset" style="margin-top:10px">
+          <p style="font-size:11px;color:var(--c-muted);margin-bottom:5px">Reference — <span id="r-seg-range" style="font-weight:600;color:var(--c-text)"></span></p>
+          <audio id="r-ref-seg" controls style="width:100%;height:36px"></audio>
+        </div>
+
+        <hr class="divider" />
+        <p style="font-size:13px;font-weight:600;margin-bottom:8px">Your recording</p>
+        <div class="row" style="flex-wrap:wrap;gap:7px;margin-bottom:8px">
+          <button class="btn btn-primary" id="btn-rec" onclick="toggleRec()"><i class="ti ti-microphone"></i> Start recording</button>
+          <span id="rec-st" style="font-size:12px;color:var(--c-muted)"></span>
+          <label style="margin:0;font-size:12px;color:var(--c-muted);cursor:pointer">or upload: <input type="file" id="up-aud" accept="audio/*" style="font-size:11px;width:auto;margin:0;padding:2px;border:none;background:none;color:var(--c-muted)" onchange="handleUp(this)" /></label>
+        </div>
+        <div class="wv hidden" id="wv-live"><canvas id="wv-cv"></canvas></div>
+        <div id="live-p" class="hidden" style="margin:8px 0">
+          <div class="pitch-big" id="pn">—</div>
+          <div class="cents-sm" id="pc">(sing into your mic)</div>
+        </div>
+        <audio id="rec-aud" controls style="width:100%;height:36px;display:none;margin-bottom:8px"></audio>
+        <button class="btn btn-primary btn-lg hidden" id="btn-ana" onclick="doAnalyze()"><i class="ti ti-chart-bar"></i> Analyze my recording</button>
+      </div>
+    </div>
+    <!-- results -->
+    <div id="sp-res" class="hidden">
+      <button class="btn btn-sm" style="margin-bottom:10px" onclick="tryAgain()"><i class="ti ti-arrow-left"></i> Try again</button>
+      <div class="card">
+        <div class="row" style="flex-wrap:wrap;gap:6px;margin-bottom:12px">
+          <p style="font-weight:600;font-size:14px" id="res-title"></p>
+          <span id="res-seg-tag" class="tag"></span>
+          <span id="res-ch-badge" class="ch-badge"></span>
+          <span id="res-att" class="pill" style="margin-left:auto"></span>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="metric-val" id="rv-ov">—</div><div class="metric-label">Overall</div></div>
+          <div class="metric"><div class="metric-val" id="rv-pi">—</div><div class="metric-label">Pitch</div></div>
+          <div class="metric"><div class="metric-val" id="rv-rh">—</div><div class="metric-label">Rhythm</div></div>
+          <div class="metric"><div class="metric-val" id="rv-tm">—</div><div class="metric-label">Avg timing</div></div>
+        </div>
+
+        <div id="res-prog-wrap" class="hidden card-inset" style="margin-bottom:10px">
+          <p style="font-size:12px;font-weight:600;margin-bottom:6px">Progress on this segment</p>
+          <div id="res-spark" class="spark"></div>
+          <div id="res-atts" style="margin-top:8px"></div>
+        </div>
+
+        <p class="sl">Pitch — note by note</p>
+        <div class="note-grid" id="ng"></div>
+        <div class="row" style="margin-top:6px;gap:12px;font-size:11px;color:var(--c-muted)">
+          <span><span style="display:inline-block;width:9px;height:9px;background:rgba(29,184,122,.4);border-radius:2px;margin-right:3px"></span>Within ±15¢</span>
+          <span><span style="display:inline-block;width:9px;height:9px;background:rgba(240,160,48,.4);border-radius:2px;margin-right:3px"></span>±15–40¢</span>
+          <span><span style="display:inline-block;width:9px;height:9px;background:rgba(224,72,72,.4);border-radius:2px;margin-right:3px"></span>&gt;40¢ off</span>
+        </div>
+
+        <div id="rh-wrap">
+          <p class="sl" style="margin-top:1rem">Rhythm — early / late per note</p>
+          <div class="row" style="justify-content:space-between;font-size:10px;color:var(--c-dim);margin-bottom:3px"><span>← Early</span><span>On time</span><span>Late →</span></div>
+          <div id="tb-list"></div>
+          <p style="font-size:11px;color:var(--c-dim);margin-top:4px" id="rh-legend"></p>
+        </div>
+
+        <div class="card-inset" style="margin-top:1rem">
+          <p style="font-size:11px;color:var(--c-muted);margin-bottom:5px">Pitch deviation over time</p>
+          <div style="position:relative;height:100px"><canvas id="pc-chart"></canvas></div>
+        </div>
+
+        <div class="card-inset" style="margin-top:8px">
+          <p style="font-size:13px;font-weight:600;margin-bottom:4px"><i class="ti ti-bulb"></i> Feedback</p>
+          <p style="font-size:13px;color:var(--c-muted);line-height:1.55" id="res-fb"></p>
+        </div>
+
+        <div class="row" style="margin-top:12px;flex-wrap:wrap;gap:7px">
+          <button class="btn btn-primary" onclick="tryAgain()"><i class="ti ti-refresh"></i> Try again</button>
+          <button class="btn" onclick="backToSeg()"><i class="ti ti-list"></i> Other segments</button>
+          <button class="btn" onclick="shareRes()"><i class="ti ti-share"></i> Share with director</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="st-history" class="hidden">
+    <div class="card"><p style="font-size:13px;font-weight:600;margin-bottom:10px">Practice history</p><div id="hist-list"></div></div>
+  </div>
+</div>
+
+</div><!-- end .app -->
+
+<script>
+// ══ SUPABASE INIT ══════════════════════════════════════════════
+// REPLACE THESE TWO VALUES with your own from Supabase
+const SUPABASE_URL = 'REPLACE_WITH_YOUR_SUPABASE_URL'
+const SUPABASE_ANON_KEY = 'REPLACE_WITH_YOUR_SUPABASE_ANON_KEY'
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+// ══ STATE ══════════════════════════════════════════════════════
+let currentUser = null   // supabase user object
+let userProfile = null   // { id, name, role }
+let selEx = null, selSeg = null
+let mr = null, ac$ = [], isRec = false, recBlob = null, upBlob = null
+let af = null, anNode = null, aCtx = null, pChart = null
+let draftSegs = [], curSeg = { start: null, end: null, onsets: [] }
+let dragging = false, dragStart = 0, refDur = 0
+let wvLeft = null, wvRight = null
+let selCh = 'mix'
+
+const CH_LABELS = { mix: 'Stereo mix', left: 'Left channel', right: 'Right channel' }
+const CH_HINT = {
+  mix: 'Stereo mix — both channels averaged.',
+  left: 'Left channel only — use when the target part is panned left.',
+  right: 'Right channel only — use when the target part is panned right.'
+}
+
+// ══ STARTUP ════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await sb.auth.getSession()
+  if (session) await loadUserAndShow(session.user)
+  else showSc('login')
+  document.getElementById('loading').style.display = 'none'
+})
+
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    await loadUserAndShow(session.user)
+    document.getElementById('loading').style.display = 'none'
+  }
+  if (event === 'SIGNED_OUT') { currentUser = null; userProfile = null; showSc('login') }
+})
+
+async function loadUserAndShow(user) {
+  currentUser = user
+  const { data } = await sb.from('profiles').select('*').eq('id', user.id).single()
+  userProfile = data
+  if (userProfile?.role === 'admin') { showSc('admin'); renderExList(); renderProg() }
+  else { showSc('singer'); document.getElementById('sg-name').textContent = 'Hi, ' + (userProfile?.name || 'there') + '!'; renderSEx(); renderHist() }
+}
+
+// ══ AUTH ═══════════════════════════════════════════════════════
+function showAuthTab(tab) {
+  document.querySelectorAll('#auth-tabs .tab').forEach((t, i) => t.classList.toggle('active', ['signin','signup'][i] === tab))
+  document.getElementById('auth-signin').classList.toggle('hidden', tab !== 'signin')
+  document.getElementById('auth-signup').classList.toggle('hidden', tab !== 'signup')
+}
+
+async function doSignIn() {
+  const email = document.getElementById('si-email').value.trim()
+  const pass = document.getElementById('si-pass').value
+  const err = document.getElementById('si-err')
+  err.style.display = 'none'
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass })
+  if (error) { err.textContent = error.message; err.style.display = 'block' }
+}
+
+async function doSignUp() {
+  const name = document.getElementById('su-name').value.trim()
+  const email = document.getElementById('su-email').value.trim()
+  const pass = document.getElementById('su-pass').value
+  const err = document.getElementById('su-err'), ok = document.getElementById('su-ok')
+  err.style.display = 'none'; ok.style.display = 'none'
+  if (!name) { err.textContent = 'Please enter your name.'; err.style.display = 'block'; return }
+  const { data, error } = await sb.auth.signUp({ email, password: pass, options: { data: { name } } })
+  if (error) { err.textContent = error.message; err.style.display = 'block'; return }
+  // insert profile (role defaults to 'singer' in DB)
+  if (data.user) await sb.from('profiles').upsert({ id: data.user.id, name, email, role: 'singer' })
+  ok.textContent = 'Account created! Check your email to confirm, then sign in.'; ok.style.display = 'block'
+}
+
+async function doSignOut() { await sb.auth.signOut() }
+
+// ══ NAV ════════════════════════════════════════════════════════
+function showSc(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById('sc-' + id).classList.add('active') }
+function aTab(t) {
+  document.querySelectorAll('#sc-admin .tab').forEach((b, i) => b.classList.toggle('active', ['exercises','progress'][i] === t))
+  document.getElementById('at-exercises').classList.toggle('hidden', t !== 'exercises')
+  document.getElementById('at-progress').classList.toggle('hidden', t !== 'progress')
+  if (t === 'progress') renderProg()
+}
+function sTab(t) {
+  document.querySelectorAll('#sc-singer .tab').forEach((b, i) => b.classList.toggle('active', ['practice','history'][i] === t))
+  document.getElementById('st-practice').classList.toggle('hidden', t !== 'practice')
+  document.getElementById('st-history').classList.toggle('hidden', t !== 'history')
+  if (t === 'history') renderHist()
+}
+
+// ══ CHANNEL SELECTOR ═══════════════════════════════════════════
+function setCh(btn) {
+  selCh = btn.dataset.ch
+  document.querySelectorAll('.ch-btn').forEach(b => b.classList.toggle('active', b === btn))
+  document.getElementById('ch-hint').textContent = CH_HINT[selCh]
+  drawTimeline()
+}
+function chBadge(ch) {
+  const map = { left: ['ch-L','L chan'], right: ['ch-R','R chan'], mix: ['ch-S','L+R'] }
+  const [cls, lbl] = map[ch] || map.mix
+  return `<span class="ch-badge ${cls}"><i class="ti ti-wave-sine"></i> ${lbl}</span>`
+}
+
+// ══ AUDIO LOAD (ADMIN) ═════════════════════════════════════════
+function onAudioLoad() {
+  const file = document.getElementById('rf').files[0]; if (!file) return
+  draftSegs = []; curSeg = { start: null, end: null, onsets: [] }; wvLeft = null; wvRight = null
+  const url = URL.createObjectURL(file)
+  document.getElementById('ref-ed').src = url
+  document.getElementById('ch-selector').classList.remove('hidden')
+  document.getElementById('seg-editor').classList.remove('hidden')
+  document.getElementById('ch-preview').classList.add('hidden')
+  renderSavedSegsAdm()
+
+  const fr = new FileReader()
+  fr.onload = e => {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    ctx.decodeAudioData(e.target.result.slice(0)).then(buf => {
+      refDur = buf.duration
+      wvLeft = buf.getChannelData(0).slice()
+      wvRight = buf.numberOfChannels > 1 ? buf.getChannelData(1).slice() : wvLeft
+      if (buf.numberOfChannels > 1) {
+        document.getElementById('ch-preview').classList.remove('hidden')
+        setTimeout(() => { drawMini('cv-left', wvLeft, '#4A9EE0'); drawMini('cv-right', wvRight, '#E0874A') }, 50)
+      }
+      drawTimeline()
+    }).catch(() => { refDur = 0; drawTimeline() })
+  }
+  fr.readAsArrayBuffer(file)
+
+  document.getElementById('ref-ed').onloadedmetadata = () => { if (!refDur) refDur = document.getElementById('ref-ed').duration }
+}
+
+function drawMini(cvId, data, color) {
+  const cv = document.getElementById(cvId); if (!cv) return
+  const w = cv.parentElement, c = cv.getContext('2d')
+  cv.width = w.offsetWidth || 280; cv.height = 36
+  c.clearRect(0, 0, cv.width, cv.height)
+  if (!data) return
+  const step = Math.floor(data.length / cv.width)
+  c.strokeStyle = color; c.lineWidth = 1; c.beginPath()
+  for (let x = 0; x < cv.width; x++) {
+    let mx = 0; for (let j = 0; j < step; j++) { const v = Math.abs(data[x * step + j] || 0); if (v > mx) mx = v }
+    const h = mx * cv.height * .85; c.moveTo(x, cv.height / 2 - h / 2); c.lineTo(x, cv.height / 2 + h / 2)
+  }
+  c.stroke()
+}
+
+// ══ SEGMENT EDITOR ═════════════════════════════════════════════
+function getActiveWv() {
+  if (selCh === 'left') return wvLeft
+  if (selCh === 'right') return wvRight
+  if (!wvLeft || !wvRight) return wvLeft
+  const mix = new Float32Array(wvLeft.length)
+  for (let i = 0; i < wvLeft.length; i++) mix[i] = (wvLeft[i] + wvRight[i]) * .5
+  return mix
+}
+
+function drawTimeline() {
+  const tl = document.getElementById('seg-tl'), cv = document.getElementById('tc')
+  cv.width = tl.offsetWidth || 640; cv.height = 72
+  const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height)
+  const data = getActiveWv()
+  if (data) {
+    const step = Math.floor(data.length / cv.width)
+    const col = selCh === 'left' ? 'rgba(74,158,224,0.5)' : selCh === 'right' ? 'rgba(224,135,74,0.5)' : 'rgba(123,110,246,0.4)'
+    c.strokeStyle = col; c.lineWidth = 1; c.beginPath()
+    for (let x = 0; x < cv.width; x++) {
+      let mx = 0; for (let j = 0; j < step; j++) { const v = Math.abs(data[x * step + j] || 0); if (v > mx) mx = v }
+      const h = mx * cv.height * .85; c.moveTo(x, cv.height / 2 - h / 2); c.lineTo(x, cv.height / 2 + h / 2)
+    }
+    c.stroke()
+  } else {
+    c.fillStyle = 'rgba(255,255,255,0.04)'; c.fillRect(0, 0, cv.width, cv.height)
+    c.fillStyle = 'rgba(255,255,255,0.2)'; c.font = '12px sans-serif'; c.textAlign = 'center'
+    c.fillText('Load audio to see waveform', cv.width / 2, 38)
+  }
+  if (refDur > 0) {
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.font = '10px sans-serif'; c.textAlign = 'left'
+    const iv = refDur > 60 ? 30 : refDur > 30 ? 10 : 5
+    for (let t = 0; t <= refDur; t += iv) c.fillText(fmtT(t), t / refDur * cv.width + 2, cv.height - 3)
+  }
+  updateSegRgn(); updateOnsetLayer()
+}
+
+function fmtT(s) { const m = Math.floor(s / 60); return m > 0 ? m + ':' + (s % 60 < 10 ? '0' : '') + (s % 60 | 0) : (s | 0) + '.' + ((s % 1) * 10 | 0) + 's' }
+
+function updateSegRgn() {
+  const r = document.getElementById('seg-rgn'), tl = document.getElementById('seg-tl')
+  if (curSeg.start === null) { r.classList.add('hidden'); return }
+  const w = tl.offsetWidth || 640, x1 = curSeg.start / refDur * w, x2 = curSeg.end / refDur * w
+  r.style.left = x1 + 'px'; r.style.width = (x2 - x1) + 'px'; r.classList.remove('hidden')
+  document.getElementById('seg-time-lbl').textContent = fmtT(curSeg.start) + ' → ' + fmtT(curSeg.end) + ' (' + ((curSeg.end - curSeg.start) | 0) + 's)'
+  document.getElementById('btn-tap').disabled = false
+}
+
+function updateOnsetLayer() {
+  const ol = document.getElementById('onset-layer'), w = document.getElementById('seg-tl').offsetWidth || 640
+  if (!refDur) { ol.innerHTML = ''; return }
+  let html = ''
+  draftSegs.forEach(s => s.onsets.forEach(t => { html += `<div class="onset-mk saved" style="left:${(t/refDur*100).toFixed(2)}%"></div>` }))
+  curSeg.onsets.forEach(t => { html += `<div class="onset-mk" style="left:${(t/refDur*100).toFixed(2)}%"></div>` })
+  ol.innerHTML = html
+  document.getElementById('onset-ct').textContent = curSeg.onsets.length + ' onset' + (curSeg.onsets.length !== 1 ? 's' : '')
+}
+
+function getX(e, el) { const r = el.getBoundingClientRect(); return Math.max(0, Math.min(e.clientX - r.left, r.width)) }
+function tmDown(e) { if (!refDur) return; dragging = true; const x = getX(e, e.currentTarget), t = x / (e.currentTarget.offsetWidth || 640) * refDur; dragStart = t; curSeg = { start: t, end: t, onsets: [] }; document.getElementById('btn-tap').disabled = true; updateSegRgn(); updateOnsetLayer() }
+function tmMove(e) { if (!dragging) return; const x = getX(e, e.currentTarget), t = x / (e.currentTarget.offsetWidth || 640) * refDur; curSeg.start = Math.min(dragStart, t); curSeg.end = Math.max(dragStart, t); updateSegRgn() }
+function tmUp() { dragging = false; if (curSeg.end - curSeg.start < 0.5) { curSeg = { start: null, end: null, onsets: [] }; document.getElementById('seg-rgn').classList.add('hidden'); document.getElementById('seg-time-lbl').textContent = 'Drag on the timeline to select a range'; document.getElementById('btn-tap').disabled = true } updateSegRgn(); updateOnsetLayer() }
+function tapOnset() {
+  const aud = document.getElementById('ref-ed')
+  if (!aud.src || aud.readyState < 1) { alert('Play the audio first, then tap.'); return }
+  const t = parseFloat(aud.currentTime.toFixed(3))
+  if (curSeg.start !== null && (t < curSeg.start || t > curSeg.end)) { alert('Playback is outside the selected range.'); return }
+  curSeg.onsets.push(t); curSeg.onsets.sort((a, b) => a - b); updateOnsetLayer()
+}
+function undoOnset() { curSeg.onsets.pop(); updateOnsetLayer() }
+function clearOnsets() { curSeg.onsets = []; updateOnsetLayer() }
+function saveSeg() {
+  if (curSeg.start === null) { alert('Drag on the timeline to select a range first.'); return }
+  const name = document.getElementById('seg-name').value.trim(); if (!name) { alert('Name this segment.'); return }
+  draftSegs.push({ id: Date.now(), name, start: +curSeg.start.toFixed(3), end: +curSeg.end.toFixed(3), onsets: curSeg.onsets.slice() })
+  curSeg = { start: null, end: null, onsets: [] }; document.getElementById('seg-name').value = ''
+  document.getElementById('seg-rgn').classList.add('hidden'); document.getElementById('seg-time-lbl').textContent = 'Drag on the timeline to select a range'
+  document.getElementById('btn-tap').disabled = true; updateOnsetLayer(); renderSavedSegsAdm()
+}
+function renderSavedSegsAdm() {
+  const el = document.getElementById('saved-segs-adm')
+  if (!draftSegs.length) { el.innerHTML = '<p style="font-size:12px;color:var(--c-muted);margin-top:6px">No segments saved yet.</p>'; return }
+  el.innerHTML = draftSegs.map(s => `<div class="card" style="padding:7px 10px;display:flex;align-items:center;gap:7px;margin-top:5px">
+    <div style="flex:1"><span style="font-size:12px;font-weight:600">${s.name}</span> <span style="font-size:11px;color:var(--c-muted)">${fmtT(s.start)} – ${fmtT(s.end)}</span> <span class="tag" style="${s.onsets.length?'color:var(--c-green)':''}">${s.onsets.length} onsets</span></div>
+    <button class="btn btn-sm" onclick="rmDraftSeg(${s.id})" style="color:var(--c-red);border-color:var(--c-red)"><i class="ti ti-trash"></i></button>
+  </div>`).join('')
+}
+function rmDraftSeg(id) { draftSegs = draftSegs.filter(s => s.id !== id); renderSavedSegsAdm(); updateOnsetLayer() }
+
+// ══ ADD EXERCISE (saves to Supabase) ═══════════════════════════
+async function addExercise() {
+  const name = document.getElementById('en').value.trim()
+  const file = document.getElementById('rf').files[0]
+  const notes = document.getElementById('en-notes').value.trim()
+  const vp = document.getElementById('evp').value
+  const msg = document.getElementById('ex-msg')
+  if (!name) { showMsg(msg, 'Enter a name.', 'red'); return }
+  if (!file) { showMsg(msg, 'Upload an audio file.', 'red'); return }
+  if (!draftSegs.length && !confirm('No segments defined. Add the exercise without segments?')) return
+
+  showMsg(msg, 'Uploading…', 'muted')
+
+  // upload audio to Supabase Storage
+  const ext = file.name.split('.').pop()
+  const path = `exercises/${Date.now()}.${ext}`
+  const { error: upErr } = await sb.storage.from('audio').upload(path, file, { contentType: file.type })
+  if (upErr) { showMsg(msg, 'Upload failed: ' + upErr.message, 'red'); return }
+  const { data: { publicUrl } } = sb.storage.from('audio').getPublicUrl(path)
+
+  const { error: dbErr } = await sb.from('exercises').insert({
+    name, voice_part: vp, channel: selCh, notes, audio_url: publicUrl,
+    segments: draftSegs, created_by: currentUser.id
+  })
+  if (dbErr) { showMsg(msg, 'Save failed: ' + dbErr.message, 'red'); return }
+
+  showMsg(msg, 'Exercise added!', 'green')
+  document.getElementById('en').value = ''; document.getElementById('en-notes').value = ''
+  document.getElementById('rf').value = ''; document.getElementById('ch-selector').classList.add('hidden')
+  document.getElementById('seg-editor').classList.add('hidden'); document.getElementById('ch-preview').classList.add('hidden')
+  draftSegs = []; curSeg = { start: null, end: null, onsets: [] }; selCh = 'mix'; wvLeft = null; wvRight = null
+  document.querySelectorAll('.ch-btn').forEach(b => b.classList.toggle('active', b.dataset.ch === 'mix'))
+  renderExList()
+}
+
+function showMsg(el, text, color) {
+  el.textContent = text; el.style.color = color === 'red' ? 'var(--c-red)' : color === 'green' ? 'var(--c-green)' : 'var(--c-muted)'; el.style.display = 'block'
+  if (color === 'green') setTimeout(() => { el.style.display = 'none' }, 4000)
+}
+
+async function renderExList() {
+  const el = document.getElementById('ex-list')
+  const { data: list } = await sb.from('exercises').select('*').order('created_at', { ascending: false })
+  if (!list?.length) { el.innerHTML = '<p style="font-size:13px;color:var(--c-muted)">No exercises yet.</p>'; return }
+  el.innerHTML = list.map(ex => `<div class="card" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <div style="flex:1;min-width:130px">
+      <p style="font-weight:600;font-size:13px">${ex.name}</p>
+      <div class="row" style="flex-wrap:wrap;gap:5px;margin-top:3px">
+        <span class="tag">${ex.voice_part}</span> ${chBadge(ex.channel||'mix')} <span class="tag">${ex.segments?.length||0} segment${(ex.segments?.length||0)!==1?'s':''}</span>
+      </div>
+      ${ex.notes?`<p style="font-size:11px;color:var(--c-muted);margin-top:2px">${ex.notes}</p>`:''}
+    </div>
+    <audio controls src="${ex.audio_url}" style="height:30px;max-width:170px"></audio>
+    <button class="btn btn-sm" onclick="delEx('${ex.id}')" style="color:var(--c-red);border-color:var(--c-red)"><i class="ti ti-trash"></i></button>
+  </div>`).join('')
+}
+
+async function delEx(id) {
+  if (!confirm('Delete this exercise? All singer history for it will remain.')) return
+  await sb.from('exercises').delete().eq('id', id); renderExList()
+}
+
+// ══ SINGER — PICK EXERCISE ═════════════════════════════════════
+async function renderSEx() {
+  const el = document.getElementById('s-ex-list')
+  const { data: list } = await sb.from('exercises').select('*').order('created_at', { ascending: false })
+  if (!list?.length) { el.innerHTML = '<div class="alert alert-info"><i class="ti ti-info-circle"></i> No exercises yet — ask your director to add some!</div>'; return }
+  el.innerHTML = list.map(ex => `<div class="card ex-card" onclick="pickEx('${ex.id}')">
+    <div class="row">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(123,110,246,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ti ti-music" style="color:var(--c-accent)"></i></div>
+      <div style="flex:1">
+        <p style="font-weight:600;font-size:13px">${ex.name}</p>
+        <div class="row" style="flex-wrap:wrap;gap:5px;margin-top:2px">
+          <span class="tag">${ex.voice_part}</span> ${chBadge(ex.channel||'mix')} <span class="tag">${ex.segments?.length||0} segment${(ex.segments?.length||0)!==1?'s':''}</span>
+        </div>
+      </div>
+      <i class="ti ti-chevron-right" style="color:var(--c-dim)"></i>
+    </div>
+  </div>`).join('')
+}
+
+async function pickEx(id) {
+  const { data } = await sb.from('exercises').select('*').eq('id', id).single()
+  selEx = data; if (!selEx) return
+  document.getElementById('s-ex-title').textContent = selEx.name
+  document.getElementById('s-ex-notes').textContent = selEx.notes || ''
+  document.getElementById('s-ref-prev').src = selEx.audio_url
+  showStep('seg'); await renderSSeg()
+}
+
+async function renderSSeg() {
+  const el = document.getElementById('s-seg-list')
+  if (!selEx.segments?.length) { el.innerHTML = '<p style="font-size:13px;color:var(--c-muted)">No segments defined for this exercise.</p>'; return }
+  // fetch attempt counts per segment for this user
+  const { data: atts } = await sb.from('attempts').select('segment_id, overall').eq('user_id', currentUser.id).eq('exercise_id', selEx.id)
+  el.innerHTML = selEx.segments.map(seg => {
+    const segAtts = (atts || []).filter(a => a.segment_id === seg.id)
+    const best = segAtts.length ? Math.max(...segAtts.map(a => a.overall)) : null
+    const last = segAtts.length ? segAtts[segAtts.length-1].overall : null
+    const trend = segAtts.length >= 2 ? last - segAtts[segAtts.length-2].overall : null
+    return `<div class="card seg-card" onclick="pickSeg('${seg.id}')">
+      <div class="row">
+        <div style="flex:1">
+          <p style="font-weight:600;font-size:13px">${seg.name}</p>
+          <p style="font-size:11px;color:var(--c-muted)">${fmtT(seg.start)} – ${fmtT(seg.end)} · ${seg.onsets?.length?seg.onsets.length+' onsets':'no rhythm data'}</p>
+          ${segAtts.length?`<p style="font-size:11px;color:var(--c-muted);margin-top:1px">${segAtts.length} attempt${segAtts.length!==1?'s':''} · best ${best}% · last ${last}%${trend!==null?' · '+(trend>=0?'↑':'↓')+Math.abs(trend)+'%':''}</p>`:'<p style="font-size:11px;color:var(--c-dim)">Not attempted yet</p>'}
+        </div>
+        ${best!==null?`<span class="pill ${best>=85?'pill-g':best>=70?'pill-o':'pill-r'}">${best}%</span>`:''}
+        <i class="ti ti-chevron-right" style="color:var(--c-dim)"></i>
+      </div>
+    </div>`
+  }).join('')
+}
+
+async function pickSeg(segId) {
+  selSeg = selEx.segments.find(s => s.id === segId || s.id === +segId); if (!selSeg) return
+  document.getElementById('r-ex-title').textContent = selEx.name
+  document.getElementById('r-seg-tag').textContent = selSeg.name
+  document.getElementById('r-ch-badge').innerHTML = chBadge(selEx.channel || 'mix')
+  document.getElementById('r-seg-range').textContent = fmtT(selSeg.start) + ' – ' + fmtT(selSeg.end)
+  document.getElementById('r-seg-notes').textContent = selEx.notes || ''
+
+  // progress spark
+  const { data: atts } = await sb.from('attempts').select('*').eq('user_id', currentUser.id).eq('exercise_id', selEx.id).eq('segment_id', selSeg.id).order('created_at')
+  const sw = document.getElementById('r-prev-wrap')
+  if (atts?.length >= 2) { sw.classList.remove('hidden'); renderSpark('r-spark', atts); document.getElementById('r-spark-lbl').textContent = atts.length + ' attempts · best ' + Math.max(...atts.map(a=>a.overall)) + '%' }
+  else sw.classList.add('hidden')
+
+  // slice audio
+  const url = await sliceAudio(selEx.audio_url, selSeg.start, selSeg.end, selEx.channel || 'mix')
+  document.getElementById('r-ref-seg').src = url
+  showStep('rec'); resetRec()
+}
+
+// ══ AUDIO SLICING ══════════════════════════════════════════════
+async function sliceAudio(audioUrl, start, end, channel) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)()
+  const resp = await fetch(audioUrl)
+  const ab = await resp.arrayBuffer()
+  const buf = await ctx.decodeAudioData(ab)
+  const sr = buf.sampleRate, s0 = Math.floor(start * sr), s1 = Math.min(Math.floor(end * sr), buf.length), len = s1 - s0
+  const out = ctx.createBuffer(1, len, sr), dst = out.getChannelData(0)
+  const src = getChData(buf, channel)
+  for (let i = 0; i < len; i++) dst[i] = src[s0 + i] || 0
+  return URL.createObjectURL(new Blob([bufToWav(out)], { type: 'audio/wav' }))
+}
+function getChData(buf, ch) {
+  if (ch === 'left') return buf.getChannelData(0)
+  if (ch === 'right') return buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0)
+  const L = buf.getChannelData(0); if (buf.numberOfChannels < 2) return L
+  const R = buf.getChannelData(1), mix = new Float32Array(L.length)
+  for (let i = 0; i < L.length; i++) mix[i] = (L[i] + R[i]) * .5
+  return mix
+}
+function bufToWav(buf) {
+  const d = buf.getChannelData(0), sr = buf.sampleRate, len = d.length * 2 + 44, ab = new ArrayBuffer(len), v = new DataView(ab)
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)) }
+  w(0,'RIFF'); v.setUint32(4, len-8, true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true)
+  v.setUint32(24, sr, true); v.setUint32(28, sr*2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36,'data'); v.setUint32(40, d.length*2, true)
+  let off = 44; for (let i = 0; i < d.length; i++) { const s = Math.max(-1, Math.min(1, d[i])); v.setInt16(off, s < 0 ? s*0x8000 : s*0x7FFF, true); off += 2 }
+  return ab
+}
+
+// ══ RECORDING ══════════════════════════════════════════════════
+function showStep(s) { ['ex','seg','rec','res'].forEach(id => document.getElementById('sp-'+id).classList.toggle('hidden', id !== s)) }
+function backToEx() { showStep('ex'); renderSEx() }
+function backToSeg() { showStep('seg'); renderSSeg() }
+function tryAgain() { showStep('rec'); resetRec() }
+
+function resetRec() {
+  recBlob = null; upBlob = null; isRec = false
+  document.getElementById('btn-rec').innerHTML = '<i class="ti ti-microphone"></i> Start recording'
+  document.getElementById('btn-rec').className = 'btn btn-primary'
+  document.getElementById('rec-st').textContent = ''
+  document.getElementById('btn-ana').classList.add('hidden')
+  document.getElementById('rec-aud').style.display = 'none'
+  document.getElementById('wv-live').classList.add('hidden')
+  document.getElementById('live-p').classList.add('hidden')
+  document.getElementById('up-aud').value = ''
+  if (af) { cancelAnimationFrame(af); af = null }
+}
+
+async function toggleRec() {
+  if (isRec) { stopRec(); return }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    aCtx = new (window.AudioContext || window.webkitAudioContext)()
+    const src = aCtx.createMediaStreamSource(stream)
+    anNode = aCtx.createAnalyser(); anNode.fftSize = 2048; src.connect(anNode)
+    mr = new MediaRecorder(stream); ac$ = []
+    mr.ondataavailable = e => ac$.push(e.data)
+    mr.onstop = () => {
+      recBlob = new Blob(ac$, { type: 'audio/webm' })
+      const u = URL.createObjectURL(recBlob)
+      const a = document.getElementById('rec-aud'); a.src = u; a.style.display = 'block'
+      document.getElementById('btn-ana').classList.remove('hidden')
+      document.getElementById('live-p').classList.add('hidden')
+      if (af) { cancelAnimationFrame(af); af = null }
+      stream.getTracks().forEach(t => t.stop())
+    }
+    mr.start(); isRec = true
+    document.getElementById('btn-rec').innerHTML = '<span class="rec-dot"></span> Stop recording'
+    document.getElementById('btn-rec').className = 'btn btn-danger'
+    document.getElementById('wv-live').classList.remove('hidden')
+    document.getElementById('live-p').classList.remove('hidden')
+    drawLive()
+  } catch (e) { alert('Mic access denied. Please allow microphone access, or upload a file instead.') }
+}
+function stopRec() {
+  if (mr && mr.state === 'recording') mr.stop(); isRec = false
+  document.getElementById('btn-rec').innerHTML = '<i class="ti ti-microphone"></i> Start recording'
+  document.getElementById('btn-rec').className = 'btn btn-primary'
+  document.getElementById('rec-st').textContent = 'Recording saved.'
+}
+function handleUp(inp) {
+  const f = inp.files[0]; if (!f) return; upBlob = f
+  const u = URL.createObjectURL(f), a = document.getElementById('rec-aud'); a.src = u; a.style.display = 'block'
+  document.getElementById('btn-ana').classList.remove('hidden')
+  document.getElementById('rec-st').textContent = 'File ready: ' + f.name
+}
+
+// ══ PITCH DETECTION ════════════════════════════════════════════
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
+function f2n(f) { if (!f || f < 50) return { note: '—', cents: 0 }; const s = 12*Math.log2(f/440), r = Math.round(s); return { note: NOTE_NAMES[((r%12)+12+9)%12]+Math.floor((r+57)/12), cents: Math.round((s-r)*100) } }
+function acorr(buf, sr) {
+  let rms = 0; for (let i = 0; i < buf.length; i++) rms += buf[i]*buf[i]; rms = Math.sqrt(rms/buf.length); if (rms < 0.01) return -1
+  let r1 = 0, r2 = buf.length-1
+  for (let i = 0; i < buf.length/2; i++) { if (Math.abs(buf[i]) < 0.2) { r1 = i; break } }
+  for (let i = 1; i < buf.length/2; i++) { if (Math.abs(buf[buf.length-i]) < 0.2) { r2 = buf.length-i; break } }
+  const b2 = buf.slice(r1, r2), c = new Float32Array(b2.length)
+  for (let i = 0; i < b2.length; i++) for (let j = 0; j < b2.length-i; j++) c[i] += b2[j]*b2[j+i]
+  let d = 0; while (c[d] > c[d+1]) d++; let mx = -1, mp = -1
+  for (let i = d; i < b2.length; i++) { if (c[i] > mx) { mx = c[i]; mp = i } }
+  let T = mp; const x1 = c[T-1], x2 = c[T], x3 = c[T+1], a = (x1+x3-2*x2)/2, bv = (x3-x1)/2
+  if (a) T = T-bv/(2*a); return sr/T
+}
+
+function drawLive() {
+  if (!anNode) return
+  const cv = document.getElementById('wv-cv'), c2 = cv.getContext('2d')
+  cv.width = cv.offsetWidth || 600; cv.height = 72
+  const buf = new Float32Array(anNode.fftSize)
+  function draw() {
+    af = requestAnimationFrame(draw); anNode.getFloatTimeDomainData(buf)
+    c2.clearRect(0, 0, cv.width, cv.height); c2.strokeStyle = '#7B6EF6'; c2.lineWidth = 1.5; c2.beginPath()
+    const sl = cv.width / buf.length; let x = 0
+    for (let i = 0; i < buf.length; i++) { const y = (buf[i]*.5+.5)*cv.height; i===0?c2.moveTo(x,y):c2.lineTo(x,y); x+=sl }
+    c2.stroke()
+    const fr = acorr(buf, aCtx.sampleRate)
+    if (fr > 0) { const { note, cents } = f2n(fr); document.getElementById('pn').textContent = note; document.getElementById('pc').textContent = (cents>0?'+':'')+cents+'¢  '+(Math.abs(cents)<=15?'✓':Math.abs(cents)<=40?'~':'↕') }
+    else { document.getElementById('pn').textContent = '—'; document.getElementById('pc').textContent = '(sing into your mic)' }
+  }
+  draw()
+}
+
+// ══ DTW ════════════════════════════════════════════════════════
+function dtw(a, b) {
+  const n = a.length, m = b.length, cost = Array.from({length:n}, ()=>new Float64Array(m).fill(Infinity))
+  cost[0][0] = Math.abs(a[0]-b[0])
+  for (let i=1;i<n;i++) cost[i][0] = cost[i-1][0]+Math.abs(a[i]-b[0])
+  for (let j=1;j<m;j++) cost[0][j] = cost[0][j-1]+Math.abs(a[0]-b[j])
+  for (let i=1;i<n;i++) for (let j=1;j<m;j++) { const c=Math.abs(a[i]-b[j]); cost[i][j]=c+Math.min(cost[i-1][j],cost[i][j-1],cost[i-1][j-1]) }
+  const path = []; let i=n-1, j=m-1; path.push([i,j])
+  while (i>0||j>0) { if(i===0)j--;else if(j===0)i--;else{const v=Math.min(cost[i-1][j-1],cost[i-1][j],cost[i][j-1]);if(v===cost[i-1][j-1]){i--;j--}else if(v===cost[i-1][j])i--;else j--};path.push([i,j]) }
+  return path.reverse()
+}
+function detectOnsets(data, sr) {
+  const hop = Math.floor(sr*.01), win = Math.floor(sr*.025), en = []
+  for (let i=0;i<data.length-win;i+=hop) { let e=0;for(let j=0;j<win;j++)e+=data[i+j]*data[i+j];en.push(Math.sqrt(e/win)) }
+  const dv = en.map((v,i)=>i===0?0:Math.max(0,v-en[i-1]))
+  const thr = dv.reduce((a,b)=>a+b,0)/dv.length*2.5
+  const ons = []; let last = -1
+  for (let i=1;i<dv.length-1;i++) { if(dv[i]>thr&&dv[i]>dv[i-1]&&dv[i]>=dv[i+1]){const t=i*hop/sr;if(t-last>0.1){ons.push(+t.toFixed(3));last=t}} }
+  return ons
+}
+
+// ══ ANALYZE ════════════════════════════════════════════════════
+function doAnalyze() {
+  const blob = recBlob || upBlob; if (!blob) { alert('No recording found.'); return }
+  document.getElementById('btn-ana').textContent = 'Analyzing…'; document.getElementById('btn-ana').disabled = true
+  const ctx = new (window.AudioContext || window.webkitAudioContext)()
+  const fr = new FileReader()
+  fr.onload = e => ctx.decodeAudioData(e.target.result).then(async buf => {
+    const data = buf.getChannelData(0), sr = buf.sampleRate
+    const hop = Math.floor(sr*.05), ws = 2048, pitches = []
+    for (let i=0;i<data.length-ws;i+=hop) { const w=new Float32Array(ws);for(let j=0;j<ws;j++)w[j]=data[i+j]||0;const f=acorr(w,sr);if(f>80&&f<1200)pitches.push(f) }
+    document.getElementById('btn-ana').textContent = 'Analyze my recording'; document.getElementById('btn-ana').disabled = false
+    if (!pitches.length) { alert('Could not detect pitch. Try singing more clearly, or in a quieter space.'); return }
+
+    const good = pitches.filter(f=>{const s=12*Math.log2(f/440),n=Math.round(s);return Math.abs((s-n)*100)<=15})
+    const pitchAcc = Math.round(good.length/pitches.length*100)
+
+    let rhythmScore = null, timingDevs = []
+    const refOnsets = selSeg.onsets
+    if (refOnsets?.length >= 2) {
+      const sOnsets = detectOnsets(data, sr)
+      if (sOnsets.length >= 2) {
+        const path = dtw(sOnsets, refOnsets), seen = new Set()
+        path.forEach(([si,ri])=>{if(!seen.has(ri)){seen.add(ri);timingDevs.push(sOnsets[si]-refOnsets[ri])}})
+        const mean = timingDevs.map(Math.abs).reduce((a,b)=>a+b,0)/timingDevs.length
+        rhythmScore = Math.max(0, Math.round(100-mean*200))
+      } else rhythmScore = 50
+    }
+    const avgMs = timingDevs.length ? Math.round(timingDevs.map(Math.abs).reduce((a,b)=>a+b,0)/timingDevs.length*1000) : null
+    const overall = rhythmScore !== null ? Math.round(pitchAcc*.6+rhythmScore*.4) : pitchAcc
+
+    // save to Supabase
+    await sb.from('attempts').insert({
+      user_id: currentUser.id, exercise_id: selEx.id, segment_id: selSeg.id,
+      overall, pitch_acc: pitchAcc, rhythm_score: rhythmScore, avg_timing_ms: avgMs,
+      timing_devs: timingDevs
+    })
+
+    // fetch updated attempts
+    const { data: atts } = await sb.from('attempts').select('*').eq('user_id', currentUser.id).eq('exercise_id', selEx.id).eq('segment_id', selSeg.id).order('created_at')
+
+    // render results
+    document.getElementById('res-title').textContent = selEx.name
+    document.getElementById('res-seg-tag').textContent = selSeg.name
+    document.getElementById('res-ch-badge').innerHTML = chBadge(selEx.channel || 'mix')
+    const ab2 = document.getElementById('res-att'); ab2.textContent = 'Attempt #'+atts.length; ab2.className = 'pill '+(overall>=85?'pill-g':overall>=70?'pill-o':'pill-r')
+    document.getElementById('rv-ov').textContent = overall+'%'; document.getElementById('rv-ov').style.color = overall>=85?'var(--c-green)':overall>=70?'var(--c-amber)':'var(--c-red)'
+    document.getElementById('rv-pi').textContent = pitchAcc+'%'
+    document.getElementById('rv-rh').textContent = rhythmScore !== null ? rhythmScore+'%' : 'N/A'
+    document.getElementById('rv-tm').textContent = avgMs !== null ? avgMs+'ms' : 'N/A'
+
+    // progress
+    const pw = document.getElementById('res-prog-wrap')
+    if (atts.length >= 2) {
+      pw.classList.remove('hidden'); renderSpark('res-spark', atts)
+      document.getElementById('res-atts').innerHTML = '<div style="display:flex;flex-direction:column;gap:2px">'+atts.slice(-5).map((a,i)=>`<div class="ar"><span style="width:22px;color:var(--c-dim)">#${i+1+(atts.length-Math.min(5,atts.length))}</span><span class="pill ${a.overall>=85?'pill-g':a.overall>=70?'pill-o':'pill-r'}" style="font-size:10px">${a.overall}%</span><span style="color:var(--c-muted)">P:${a.pitch_acc}% R:${a.rhythm_score!==null?a.rhythm_score+'%':'—'}</span><span style="margin-left:auto;color:var(--c-dim)">${new Date(a.created_at).toLocaleDateString()}</span></div>`).join('')+'</div>'
+    } else pw.classList.add('hidden')
+
+    // note grid
+    const nc = Math.min(24, Math.max(8, Math.floor(pitches.length/3)))
+    document.getElementById('ng').innerHTML = Array.from({length:nc},(_,i)=>{const f=pitches[Math.floor(i*pitches.length/nc)];if(!f)return'<div class="nc">—</div>';const s=12*Math.log2(f/440),n=Math.round(s),c=Math.abs((s-n)*100);const{note}=f2n(f);return`<div class="nc ${c<=15?'g':c<=40?'o':'r'}" title="${Math.round(c)}¢">${note.replace(/\d/,'')}</div>`}).join('')
+
+    // timing bars
+    const rhw = document.getElementById('rh-wrap')
+    if (timingDevs.length) {
+      rhw.classList.remove('hidden')
+      const mx = Math.max(...timingDevs.map(Math.abs), .3)
+      document.getElementById('tb-list').innerHTML = timingDevs.slice(0,20).map((d,i)=>{
+        const pct=Math.min(47,Math.abs(d)/mx*47),early=d<0,clr=Math.abs(d)<.05?'var(--c-green)':Math.abs(d)<.2?'var(--c-amber)':'var(--c-red)'
+        const style=early?`right:50%;width:${pct.toFixed(1)}%`:`left:50%;width:${pct.toFixed(1)}%`
+        return`<div class="tb-wrap"><span style="width:18px;color:var(--c-dim);text-align:right">${i+1}</span><div class="tb-bg"><div class="tb-ctr"></div><div class="tb-fill" style="${style};background:${clr};position:absolute;top:1px;height:8px;border-radius:4px"></div></div><span style="width:52px;color:var(--c-muted)">${d>0?'+':''}${Math.round(d*1000)}ms</span></div>`
+      }).join('')
+      document.getElementById('rh-legend').textContent = timingDevs.length+' notes aligned via DTW · avg '+avgMs+'ms · ref: '+CH_LABELS[selEx.channel||'mix']
+    } else rhw.classList.add('hidden')
+
+    // pitch chart
+    if (pChart) { pChart.destroy(); pChart = null }
+    const step = Math.max(1, Math.floor(pitches.length/40)), labels = [], cd = []
+    for (let i=0;i<pitches.length;i+=step) { labels.push((i*hop/sr).toFixed(1)+'s');const s=12*Math.log2(pitches[i]/440),n=Math.round(s);cd.push(+((s-n)*100).toFixed(1)) }
+    pChart = new Chart(document.getElementById('pc-chart'),{type:'line',data:{labels,datasets:[
+      {data:cd,borderColor:'#7B6EF6',backgroundColor:'rgba(123,110,246,0.08)',borderWidth:1.5,pointRadius:2,fill:true,tension:.3},
+      {data:new Array(labels.length).fill(15),borderColor:'#1DB87A',borderDash:[4,4],borderWidth:1,pointRadius:0},
+      {data:new Array(labels.length).fill(-15),borderColor:'#1DB87A',borderDash:[4,4],borderWidth:1,pointRadius:0}
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:-60,max:60,ticks:{color:'#888899',callback:v=>v+'¢',font:{size:10}},grid:{color:'rgba(255,255,255,0.06)'}},x:{ticks:{color:'#888899',maxTicksLimit:8,font:{size:10}},grid:{display:false}}}}})
+
+    // feedback
+    const fb = []
+    if (pitchAcc>=85) fb.push('Excellent pitch accuracy!')
+    else if (pitchAcc>=70) fb.push('Good pitch — watch the highlighted notes where you drifted.')
+    else fb.push('Pitch needs work. Sing along with the reference a few times before recording.')
+    if (rhythmScore !== null) { if(rhythmScore>=85)fb.push('Rhythm is very solid.');else if(rhythmScore>=70)fb.push('A few timing slips — check the early/late bars above.');else fb.push('Focus on rhythm: tap the beat while listening, then sing along.') }
+    if (atts.length >= 2) { const prev=atts[atts.length-2].overall,diff=overall-prev;if(diff>0)fb.push('Up '+diff+'% from last time — great progress!');else if(diff<0)fb.push('Down '+Math.abs(diff)+'% — keep at it!');else fb.push('Same as last time — consistency counts!') }
+    document.getElementById('res-fb').textContent = fb.join(' ')
+    showStep('res')
+  }).catch(err => { console.error(err); document.getElementById('btn-ana').textContent='Analyze my recording'; document.getElementById('btn-ana').disabled=false; alert('Could not decode audio. Try MP3 or WAV.') })
+  fr.readAsArrayBuffer(blob)
+}
+
+async function shareRes() {
+  const { data: atts } = await sb.from('attempts').select('*').eq('user_id',currentUser.id).eq('exercise_id',selEx.id).eq('segment_id',selSeg.id).order('created_at')
+  const latest = atts?.[atts.length-1]; if (!latest) return
+  const msg = `${userProfile?.name||'Singer'} — "${selEx.name}" / "${selSeg.name}" [${CH_LABELS[selEx.channel||'mix']}] | Attempt #${atts.length} | Overall: ${latest.overall}% | Pitch: ${latest.pitch_acc}% | Rhythm: ${latest.rhythm_score!==null?latest.rhythm_score+'%':'N/A'} | ${new Date(latest.created_at).toLocaleDateString()}`
+  navigator.clipboard ? navigator.clipboard.writeText(msg).then(()=>alert('Result copied! Paste into an email or message to your director.')).catch(()=>alert(msg)) : alert(msg)
+}
+
+// ══ HISTORY ════════════════════════════════════════════════════
+async function renderHist() {
+  const el = document.getElementById('hist-list')
+  const { data: atts } = await sb.from('attempts').select('*, exercises(name,channel)').eq('user_id', currentUser.id).order('created_at', { ascending: false })
+  if (!atts?.length) { el.innerHTML = '<p style="font-size:13px;color:var(--c-muted)">No sessions yet.</p>'; return }
+  // group by exercise+segment
+  const groups = {}
+  atts.forEach(a => { const k = a.exercise_id+'_'+a.segment_id; if(!groups[k]) groups[k]={exName:a.exercises?.name||'Unknown',segId:a.segment_id,channel:a.exercises?.channel||'mix',atts:[]}; groups[k].atts.unshift(a) })
+  // get segment names
+  const exIds = [...new Set(atts.map(a=>a.exercise_id))]
+  const { data: exList } = await sb.from('exercises').select('id,segments').in('id', exIds)
+  const segMap = {}; exList?.forEach(ex=>ex.segments?.forEach(s=>{segMap[ex.id+'_'+s.id]=s.name;segMap[ex.id+'_'+s.id+'_num']=s.id}))
+  el.innerHTML = Object.entries(groups).map(([key,g])=>{
+    const best = Math.max(...g.atts.map(a=>a.overall))
+    const segName = segMap[key] || 'Segment'
+    return`<div style="margin-bottom:14px">
+      <p style="font-size:13px;font-weight:600">${g.exName} <span class="tag">${segName}</span> ${chBadge(g.channel)} <span class="pill ${best>=85?'pill-g':best>=70?'pill-o':'pill-r'}" style="margin-left:3px">best ${best}%</span></p>
+      <div class="spark" style="margin:5px 0">${g.atts.map(a=>{const h=Math.max(5,Math.round(a.overall/100*32)),clr=a.overall>=85?'var(--c-green)':a.overall>=70?'var(--c-amber)':'var(--c-red)';return`<div class="spark-bar" style="height:${h}px;background:${clr}" title="${new Date(a.created_at).toLocaleDateString()}: ${a.overall}%"></div>`}).join('')}</div>
+      ${g.atts.slice(-3).map(a=>`<div class="ar"><span style="color:var(--c-dim);width:72px">${new Date(a.created_at).toLocaleDateString()}</span><span class="pill ${a.overall>=85?'pill-g':a.overall>=70?'pill-o':'pill-r'}" style="font-size:10px">${a.overall}%</span><span style="color:var(--c-muted)">P:${a.pitch_acc}% R:${a.rhythm_score!==null?a.rhythm_score+'%':'—'}</span></div>`).join('')}
+    </div>`
+  }).join('<hr class="divider">')
+}
+
+// ══ PROGRESS (ADMIN) ═══════════════════════════════════════════
+async function renderProg() {
+  const el = document.getElementById('prog-list')
+  el.innerHTML = '<p style="color:var(--c-muted);font-size:13px">Loading…</p>'
+  const { data: atts } = await sb.from('attempts').select('*, profiles(name), exercises(name,channel)').order('created_at')
+  if (!atts?.length) { el.innerHTML = '<p style="font-size:13px;color:var(--c-muted)">No sessions yet.</p>'; return }
+  const byUser = {}
+  atts.forEach(a => { const uid=a.user_id; if(!byUser[uid]) byUser[uid]={name:a.profiles?.name||'Unknown',atts:[]}; byUser[uid].atts.push(a) })
+  el.innerHTML = Object.values(byUser).map(({ name, atts: ua }) => {
+    const avg = Math.round(ua.reduce((s,a)=>s+a.overall,0)/ua.length)
+    const init = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)
+    const byKey = {}
+    ua.forEach(a=>{const k=a.exercise_id+'_'+a.segment_id;if(!byKey[k])byKey[k]={exName:a.exercises?.name||'?',ch:a.exercises?.channel||'mix',atts:[]};byKey[k].atts.push(a)})
+    return`<div class="card" style="margin-bottom:8px">
+      <div class="row" style="margin-bottom:10px">
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(123,110,246,.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--c-accent)">${init}</div>
+        <div style="flex:1"><p style="font-weight:600;font-size:13px">${name}</p><p style="font-size:11px;color:var(--c-muted)">${ua.length} session${ua.length!==1?'s':''} · ${Object.keys(byKey).length} segment${Object.keys(byKey).length!==1?'s':''}</p></div>
+        <span class="pill ${avg>=85?'pill-g':avg>=70?'pill-o':'pill-r'}">${avg}% avg</span>
+      </div>
+      ${Object.values(byKey).map(({exName,ch,atts:sa})=>{const b=Math.max(...sa.map(a=>a.overall)),last=sa[sa.length-1].overall,trend=sa.length>=2?last-sa[sa.length-2].overall:null;return`
+        <div class="row" style="padding:3px 0;border-top:1px solid var(--c-border)">
+          <span style="flex:1;font-size:12px;color:var(--c-muted)">${exName}</span>
+          ${chBadge(ch)}
+          <span style="font-size:11px;color:var(--c-dim)">${sa.length}×</span>
+          ${trend!==null?`<span style="font-size:11px;color:${trend>=0?'var(--c-green)':'var(--c-red)'}">${trend>=0?'↑':'↓'}${Math.abs(trend)}%</span>`:''}
+          <span class="pill ${b>=85?'pill-g':b>=70?'pill-o':'pill-r'}" style="font-size:10px">${b}%</span>
+        </div>`}).join('')}
+    </div>`
+  }).join('')
+}
+
+// ══ SPARK ══════════════════════════════════════════════════════
+function renderSpark(elId, atts) {
+  const el = document.getElementById(elId), vals = atts.map(a=>a.overall), mx = Math.max(...vals,1)
+  el.innerHTML = vals.map((v,i)=>{const h=Math.max(5,Math.round(v/mx*32)),clr=v>=85?'var(--c-green)':v>=70?'var(--c-amber)':'var(--c-red)';return`<div class="spark-bar" style="height:${h}px;background:${clr}" title="Attempt ${i+1}: ${v}%"></div>`}).join('')
+}
+</script>
+</body>
+</html>
